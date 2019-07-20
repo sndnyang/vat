@@ -7,7 +7,7 @@ import numpy as np
 def init_linear(shape):
     fan_in = shape[0]
     s = 1.0 * np.sqrt(6.0 / fan_in)
-    w = np.random.uniform(-s, s, shape[::-1])# .astype("float32")
+    w = np.random.uniform(-s, s, shape[::-1])
     w = w.T
     return w
 
@@ -24,7 +24,7 @@ class FNN_MNIST(FNN):
             self.linear_layers.append(l)
             self.bn_layers.append(bn)
             self.params += l.params + bn.params
-        for i in xrange(len(self.linear_layers) - 1):
+        for i in range(len(self.linear_layers) - 1):
             self.act_layers.append(L.relu)
         self.act_layers.append(L.softmax)
 

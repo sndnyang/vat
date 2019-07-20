@@ -1,1 +1,6 @@
 *.gz
+*.pyc
+trained_model
+scripts
+ini
+*.pkl

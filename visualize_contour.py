@@ -5,11 +5,12 @@ Usage:
 
 Options:
   -h --help                                 Show this screen.
-  --load_filename=<name>                    [default: trained_model]
-  --save_filename=<name>                    [default: countour]
+  --load_filename=<name>                    [default: VAT_1.pkl]
+  --save_filename=<name>                    [default: VAT_1.pdf]
   --dataset_i=<index>                       [default: 1]
 """
 
+import sys
 from docopt import docopt
 
 import theano
@@ -18,7 +19,7 @@ from numpy import linalg
 from matplotlib.patches import Circle, Arc
 import matplotlib.pyplot as plt
 
-import cPickle
+from six.moves import cPickle as pickle
 
 from theano import tensor as T
 from source.costs import LDS_finite_diff
@@ -35,8 +36,7 @@ def make_sure_path_exists(path):
             raise
 
 
-def visualize_contour_for_synthetic_dataset(model, d_i, x_data, y_data, basis, with_LDS=False, epsilon=0.5,
-                                            num_power_iter=5, save_filename='prob_cont'):
+def visualize_contour_for_synthetic_dataset(model, d_i, x_data, y_data, basis, with_lds=False, epsilon=0.5, power_iter=5, save_filename='prob_cont'):
     linewidth = 10
 
     range_x = numpy.arange(-2.0, 2.1, 0.05)
@@ -46,8 +46,8 @@ def visualize_contour_for_synthetic_dataset(model, d_i, x_data, y_data, basis, w
     train_x_1_ind = numpy.where(y_data == 1)[0]
     train_x_0_ind = numpy.where(y_data == 0)[0]
 
-    for i in xrange(range_x.shape[0]):
-        for j in xrange(range_x.shape[0]):
+    for i in range(range_x.shape[0]):
+        for j in range(range_x.shape[0]):
             test_x_org[range_x.shape[0] * i + j, 0] = range_x[i]
             test_x_org[range_x.shape[0] * i + j, 1] = range_x[j]
 
@@ -57,8 +57,8 @@ def visualize_contour_for_synthetic_dataset(model, d_i, x_data, y_data, basis, w
     pred = f_p_y_given_x(numpy.asarray(test_x, 'float32'))[:, 1]
 
     Z = numpy.zeros((range_x.shape[0], range_x.shape[0]))
-    for i in xrange(range_x.shape[0]):
-        for j in xrange(range_x.shape[0]):
+    for i in range(range_x.shape[0]):
+        for j in range(range_x.shape[0]):
             Z[i, j] = pred[range_x.shape[0] * i + j]
 
     Y, X = numpy.meshgrid(range_x, range_x)
@@ -67,7 +67,7 @@ def visualize_contour_for_synthetic_dataset(model, d_i, x_data, y_data, basis, w
     rc = 'r'
     bc = 'b'
 
-    if (d_i == 1):
+    if d_i == 1:
         rescale = 1.0  # /numpy.sqrt(500)
         arc1 = Arc(xy=[0.5 * rescale, -0.25 * rescale], width=2.0 * rescale, height=2.0 * rescale, angle=0, theta1=270,
                    theta2=180, linewidth=linewidth, alpha=0.15, color=rc)
@@ -100,12 +100,13 @@ def visualize_contour_for_synthetic_dataset(model, d_i, x_data, y_data, basis, w
     plt.xticks([-2.0, -1.0, 0, 1, 2.0], fontsize=fontsize)
     plt.yticks([-2.0, -1.0, 0, 1, 2.0], fontsize=fontsize)
 
-    plt.scatter(train_x_org[train_x_1_ind, 0] * rescale, train_x_org[train_x_1_ind, 1] * rescale, s=100, marker='o',
+    plt.scatter(train_x_org[train_x_1_ind, 0] * rescale, train_x_org[train_x_1_ind, 1] * rescale, s=10, marker='o',
                 c=rc, label='$y=1$')
-    plt.scatter(train_x_org[train_x_0_ind, 0] * rescale, train_x_org[train_x_0_ind, 1] * rescale, s=100, marker='^',
+    plt.scatter(train_x_org[train_x_0_ind, 0] * rescale, train_x_org[train_x_0_ind, 1] * rescale, s=10, marker='*',
                 c=bc, label='$y=0$')
 
-    if (with_LDS == True):
+    lds_part = ""
+    if with_lds == True:
         x = T.matrix()
         f_LDS = theano.function(inputs=[],
                                 outputs=LDS_finite_diff(x=x,
@@ -113,25 +114,46 @@ def visualize_contour_for_synthetic_dataset(model, d_i, x_data, y_data, basis, w
                                                         main_obj_type='CE',
                                                         epsilon=epsilon,
                                                         norm_constraint='L2',
-                                                        num_power_iter=num_power_iter),
+                                                        num_power_iter=power_iter),
                                 givens={x: x_data})
-        ave_LDS = numpy.mean([f_LDS().mean() for i in xrange(50)])
-        print ave_LDS
-        plt.title('Average $\widetilde{\\rm LDS}=%.3f$' % round(ave_LDS, 3), fontsize=fontsize)
+        ave_LDS = numpy.mean([f_LDS().mean() for i in range(50)])
+        print(ave_LDS)
+        lds_part = '\nAverage $\widetilde{\\rm LDS}=%.3f$' % ave_LDS
+    plt.title('%s Valid Error %g%s' % (args["--load_filename"].split("_")[0], err_rate, lds_part))
     make_sure_path_exists("./figure")
-    plt.savefig('figure/' + save_filename, transparent=True)
+    # plt.show()
+    plt.savefig('figure/' + save_filename)
+    plt.close()
 
 
 if __name__ == '__main__':
     args = docopt(__doc__)
     dataset_i = int(args['--dataset_i'])
-    dataset = cPickle.load(open('dataset/syndata_' + str(dataset_i) + '.pkl'))
+
+    with open('dataset/syndata_' + str(dataset_i) + '.pkl', "rb") as f:
+        if sys.version_info.major == 3:
+            dataset = pickle.load(f, encoding='bytes')
+        else:
+            dataset = pickle.load(f)
+
     x_train = numpy.asarray(dataset[0][0][0], dtype=theano.config.floatX)
     t_train = numpy.asarray(dataset[0][0][1], dtype='int32')
     x_valid = numpy.asarray(dataset[0][1][0], dtype=theano.config.floatX)
     t_valid = numpy.asarray(dataset[0][1][1], dtype='int32')
 
-    model = cPickle.load(open('trained_model/' + args['--load_filename']))[0]
+    with open('trained_model/' + args['--load_filename'], "rb") as f2:
+        if sys.version_info.major == 3:
+            temps = pickle.load(f2, encoding='bytes')
+            model = temps[0]
+        else:
+            model = pickle.load(f2)[0]
 
-    visualize_contour_for_synthetic_dataset(model, dataset_i, x_train, t_train, dataset[1], with_LDS=True,
-                                            save_filename=args['--save_filename'])
+    x = T.matrix()
+    f_p_y = theano.function(inputs=[x], outputs=model.forward(x))
+    pred = f_p_y(numpy.asarray(x_valid, 'float32'))
+    acc = 1.0 * numpy.sum(pred.argmax(1) == t_valid) / pred.shape[0]
+    err_rate = 1 - acc
+    print("acc %g  error rate %g" % (acc, err_rate))
+
+    visualize_contour_for_synthetic_dataset(model, dataset_i, x_valid, t_valid, dataset[1], with_lds=True, save_filename="test-"+args['--save_filename'])
+    visualize_contour_for_synthetic_dataset(model, dataset_i, x_train, t_train, dataset[1], with_lds=True, save_filename=args['--save_filename'])

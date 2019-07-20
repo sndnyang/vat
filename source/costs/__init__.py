@@ -1,11 +1,11 @@
-import cross_entropy_loss
-import quadratic_loss
-import weight_decay
-import adversarial_training
-import virtual_adversarial_training as vat
-import virtual_adversarial_training_finite_diff as vat_finite_diff
+from . import cross_entropy_loss
+from . import quadratic_loss
+from . import weight_decay
+from . import adversarial_training
+from . import virtual_adversarial_training as vat
+from . import virtual_adversarial_training_finite_diff as vat_finite_diff
 
-import error
+from . import error
 
 cross_entropy_loss = cross_entropy_loss.cross_entropy_loss
 quadratic_loss = quadratic_loss.quadratic_loss

@@ -57,31 +57,22 @@ if int(arg["--gpu_id"]) != "-1":
 
 
 import theano
-import theano.tensor as T
+import theano.tensor as t_func
 from theano.tensor.shared_randomstreams import RandomStreams
-import cPickle
 
+from dllib.ExpUtils import *
+from CostFunc import get_cost_type_semi
 from source import optimizers
 from source import costs
 from models.fnn_mnist_semisup import FNN_MNIST
 from collections import OrderedDict
 import load_data
 
-import os
-import errno
-
-
-def make_sure_path_exists(path):
-    try:
-        os.makedirs(path)
-    except OSError as exception:
-        if exception.errno != errno.EEXIST:
-            raise
+from tensorboardX import SummaryWriter
 
 
 def train(args):
-    print args
-
+    print(args)
     numpy.random.seed(int(args['--seed']))
 
     dataset = load_data.load_mnist_for_semi_sup(n_l=int(args['--num_labeled_samples']),
@@ -93,9 +84,9 @@ def train(args):
     layer_sizes = [int(layer_size) for layer_size in args['--layer_sizes'].split('-')]
     model = FNN_MNIST(layer_sizes=layer_sizes)
 
-    x = T.matrix()
-    ul_x = T.matrix()
-    t = T.ivector()
+    x = t_func.matrix()
+    ul_x = t_func.matrix()
+    t = t_func.ivector()
 
     if (args['--cost_type'] == 'MLE'):
         cost = costs.cross_entropy_loss(x=x, t=t, forward_func=model.forward_train)
@@ -117,7 +108,7 @@ def train(args):
                                                   num_power_iter=int(args['--num_power_iter']),
                                                   x_for_generating_adversarial_examples=ul_x,
                                                   forward_func_for_generating_adversarial_examples=model.forward_no_update_batch_stat)
-    elif (args['--cost_type'] == 'VAT_finite_diff'):
+    elif (args['--cost_type'] == 'VAT_f'):
         cost = costs.virtual_adversarial_training_finite_diff(x, t, model.forward_train,
                                                               'CE',
                                                               xi=1e-6,
@@ -131,8 +122,8 @@ def train(args):
 
     optimizer = optimizers.ADAM(cost=cost, params=model.params, alpha=float(args['--initial_learning_rate']))
 
-    index = T.iscalar()
-    ul_index = T.iscalar()
+    index = t_func.iscalar()
+    ul_index = t_func.iscalar()
     batch_size = int(args['--batch_size'])
     ul_batch_size = int(args['--ul_batch_size'])
 
@@ -184,26 +175,22 @@ def train(args):
     n_test = x_test.get_value().shape[0]
     n_ul_train = ul_x_train.get_value().shape[0]
 
-    # print("training...")
-
-    make_sure_path_exists("./trained_model")
-
     l_i = 0
     ul_i = 0
-    for epoch in xrange(int(args['--num_epochs'])):
-        cPickle.dump((statuses, args), open('./trained_model/' + 'tmp-' + args['--save_filename'], 'wb'),
-                     cPickle.HIGHEST_PROTOCOL)
+    for epoch in range(int(args['--num_epochs'])):
+        # cPickle.dump((statuses, args), open('./trained_model/' + 'tmp-' + args['--save_filename'], 'wb'),
+        #              cPickle.HIGHEST_PROTOCOL)
         f_permute_train_set()
         f_permute_ul_train_set()
-        for it in xrange(int(args['--num_batch_it'])):
+        for it in range(int(args['--num_batch_it'])):
             f_train(l_i, ul_i)
             l_i = 0 if l_i >= n_train / batch_size - 1 else l_i + 1
             ul_i = 0 if ul_i >= n_ul_train / ul_batch_size - 1 else ul_i + 1
 
-        sum_nll_train = numpy.sum(numpy.array([f_nll_train(i) for i in xrange(n_train / batch_size)])) * batch_size
-        sum_error_train = numpy.sum(numpy.array([f_error_train(i) for i in xrange(n_train / batch_size)]))
-        sum_nll_test = numpy.sum(numpy.array([f_nll_test(i) for i in xrange(n_test / batch_size)])) * batch_size
-        sum_error_test = numpy.sum(numpy.array([f_error_test(i) for i in xrange(n_test / batch_size)]))
+        sum_nll_train = numpy.sum(numpy.array([f_nll_train(i) for i in range(n_train / batch_size)])) * batch_size
+        sum_error_train = numpy.sum(numpy.array([f_error_train(i) for i in range(n_train / batch_size)]))
+        sum_nll_test = numpy.sum(numpy.array([f_nll_test(i) for i in range(n_test / batch_size)])) * batch_size
+        sum_error_test = numpy.sum(numpy.array([f_error_test(i) for i in range(n_test / batch_size)]))
         statuses['nll_train'].append(sum_nll_train / n_train)
         statuses['error_train'].append(sum_error_train)
         statuses['nll_test'].append(sum_nll_test / n_test)
@@ -211,8 +198,8 @@ def train(args):
         wlog("[Epoch] %d" % epoch)
         acc = 1 - 1.0*statuses['error_test'][-1]/n_test
         wlog("nll_test : %f error_test : %d accuracy:%f" % (statuses['nll_test'][-1], statuses['error_test'][-1], acc))
-        writer.add_scalar("Test/Loss", statuses['nll_test'][-1], epoch * int(args['--num_batch_it']))
-        writer.add_scalar("Test/Acc", acc, epoch * int(args['--num_batch_it']))
+        # writer.add_scalar("Test/Loss", statuses['nll_test'][-1], epoch * int(args['--num_batch_it']))
+        # writer.add_scalar("Test/Acc", acc, epoch * int(args['--num_batch_it']))
         f_lr_decay()
     # fine_tune batch stat
     f_fine_tune = theano.function(inputs=[ul_index], outputs=model.forward_for_finetuning_batch_stat(x),
@@ -225,12 +212,8 @@ def train(args):
     statuses['error_test'].append(sum_error_test)
     acc = 1 - 1.0*statuses['error_test'][-1]/n_test
     wlog("final nll_test: %f error_test: %d accuracy:%f" % (statuses['nll_test'][-1], statuses['error_test'][-1], acc))
-    writer.add_scalar("Test/Loss", statuses['nll_test'][-1], epoch * int(args['--num_batch_it']))
-    writer.add_scalar("Test/Acc", acc, epoch * int(args['--num_batch_it']))
-
-    make_sure_path_exists("./trained_model")
-    pickle.dump((model, statuses, args), open('./trained_model/' + args['--save_filename'], 'wb'),
-                 pickle.HIGHEST_PROTOCOL)
+    # writer.add_scalar("Test/Loss", statuses['nll_test'][-1], epoch * int(args['--num_batch_it']))
+    # writer.add_scalar("Test/Acc", acc, epoch * int(args['--num_batch_it']))
 
 
 if __name__ == '__main__':
@@ -239,6 +222,4 @@ if __name__ == '__main__':
         train(arg)
     except BaseException as err:
         traceback.print_exc()
-        saver.delete_dir()
         sys.exit(-1)
-    saver.finish_exp({"num_epochs": 10})
