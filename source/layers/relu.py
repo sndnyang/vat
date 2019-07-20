@@ -1,10 +1,10 @@
 import theano.tensor as T
-from layer import Layer
+from .layer import Layer
 
 
 class ReLU(Layer):
     def forward(self, x):
-        print "Layer/ReLU"
+        # print("Layer/ReLU")
         return T.maximum(0.0, x)
 
 

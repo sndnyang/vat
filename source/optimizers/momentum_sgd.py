@@ -1,4 +1,4 @@
-from optimizer import Optimizer
+from .optimizer import Optimizer
 from collections import OrderedDict
 import theano
 import theano.tensor as T
@@ -22,7 +22,7 @@ class MomentumSGD(Optimizer):
             g_model_params_mom.append(gparam_mom)
 
         for param, gparam_mom, gparam in zip(self.params, g_model_params_mom, g_model_params):
-            updates[gparam_mom] = self.ratio * gparam_mom + (1. - self.ratio) * self.lr * gparam
-            updates[param] = param - updates[gparam_mom]
+            updates[gparam_mom] = self.ratio * gparam_mom + (1. - self.ratio) * gparam
+            updates[param] = param - self.lr * updates[gparam_mom]
 
         return updates

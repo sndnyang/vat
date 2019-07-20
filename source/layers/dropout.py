@@ -1,6 +1,6 @@
 import theano
 import theano.tensor as T
-from layer import Layer
+from .layer import Layer
 import numpy
 
 from theano.tensor.shared_randomstreams import RandomStreams
@@ -12,13 +12,13 @@ class Dropout(Layer):
         self.rng = RandomStreams(numpy.random.randint(1234))
 
     def forward(self, x):
-        print "Layer/Dropout"
+        # print("Layer/Dropout")
         mask = T.cast((1 / self.p) * self.rng.binomial(n=1, p=self.p, size=x.shape), dtype=theano.config.floatX)
         return mask * x
 
 
 def dropout(x, rate=0.5, train=True):
-    if (train):
+    if train:
         return Dropout(rate)(x)
     else:
         return x

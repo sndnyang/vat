@@ -1,5 +1,5 @@
 import theano.tensor as T
-from layer import Layer
+from .layer import Layer
 
 
 class Softmax(Layer):
@@ -7,7 +7,7 @@ class Softmax(Layer):
         self.stable = stable
 
     def forward(self, x):
-        print "Layer/Softmax"
+        # print("Layer/Softmax")
         if (self.stable):
             x -= x.max(axis=1, keepdims=True)
         e_x = T.exp(x)

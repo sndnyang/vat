@@ -1,4 +1,4 @@
-from fnn import FNN
+from .fnn import FNN
 from source import layers as L
 
 
@@ -14,7 +14,7 @@ class FNN_MNIST(FNN):
             self.linear_layers.append(l)
             self.bn_layers.append(bn)
             self.params += l.params + bn.params
-        for i in xrange(len(self.linear_layers) - 1):
+        for i in range(len(self.linear_layers) - 1):
             self.act_layers.append(L.relu)
         self.act_layers.append(L.softmax)
 

@@ -1,7 +1,7 @@
-import sgd
-import momentum_sgd
-import adagrad
-import adam
+from . import sgd
+from . import momentum_sgd
+from . import adagrad
+from . import adam
 
 SGD = sgd.SGD
 MomentumSGD = momentum_sgd.MomentumSGD

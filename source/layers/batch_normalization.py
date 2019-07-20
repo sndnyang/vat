@@ -2,7 +2,7 @@ import theano
 import theano.tensor as T
 import numpy
 
-from layer import LearnableLayer
+from .layer import LearnableLayer
 
 
 class BatchNormalization(LearnableLayer):
@@ -37,7 +37,7 @@ class BatchNormalization(LearnableLayer):
         return self.forward(inputs, train=train, update_batch_stat=update_batch_stat, finetune=finetune)
 
     def forward(self, input_org, train=True, update_batch_stat=True, finetune=False):
-        print "Layer/BatchNormalization"
+        # print("Layer/BatchNormalization")
         ldim, cdim, rdim = self._internal_shape(input_org)
         input = input_org.reshape((ldim, cdim, rdim))
         if (train):

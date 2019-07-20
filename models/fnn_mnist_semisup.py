@@ -1,5 +1,15 @@
-from fnn import FNN
+from .fnn import FNN
 from source import layers as L
+
+import numpy as np
+
+
+def init_linear(shape):
+    fan_in = shape[0]
+    s = 1.0 * np.sqrt(6.0 / fan_in)
+    w = np.random.uniform(-s, s, shape[::-1])# .astype("float32")
+    w = w.T
+    return w
 
 
 class FNN_MNIST(FNN):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 __author__ = 'TakeruMiyato'
-import layers
-import optimizers
-import costs
+from . import layers
+from . import optimizers
+from . import costs

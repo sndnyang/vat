@@ -1,4 +1,4 @@
-from fnn import FNN
+from .fnn import FNN
 from source import layers as L
 
 

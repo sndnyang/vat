@@ -1,4 +1,4 @@
-from optimizer import Optimizer
+from .optimizer import Optimizer
 from collections import OrderedDict
 import theano
 import theano.tensor as T

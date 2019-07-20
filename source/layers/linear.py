@@ -2,7 +2,7 @@ import theano
 import theano.tensor as T
 import numpy
 
-from layer import LearnableLayer
+from .layer import LearnableLayer
 
 
 class Linear(LearnableLayer):
@@ -15,6 +15,7 @@ class Linear(LearnableLayer):
             W_values = initial_W
         else:
             W_values = numpy.random.normal(0, numpy.sqrt(1. / size[0]), size=size).astype(theano.config.floatX)
+            print(size, W_values.sum())
         self.W = theano.shared(W_values)
         self.params.append(self.W)
 
@@ -28,7 +29,7 @@ class Linear(LearnableLayer):
             self.params.append(self.b)
 
     def forward(self, input):
-        print "Layer/Linear"
+        # print("Layer/Linear")
         input = self._as_mat(input)
         output = T.dot(input, self.W)
         if (self.use_bias == True):

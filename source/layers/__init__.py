@@ -1,10 +1,10 @@
-import relu, lrelu
-import linear
-import sigmoid
-import softmax
-import dropout
-import batch_normalization
-import gaussian_noise
+from . import relu, lrelu
+from . import linear
+from . import sigmoid
+from . import softmax
+from . import dropout
+from . import batch_normalization
+from . import gaussian_noise
 
 Linear = linear.Linear
 

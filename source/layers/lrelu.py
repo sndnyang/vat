@@ -1,7 +1,7 @@
 import theano
 import theano.tensor as T
 import numpy
-from layer import Layer
+from .layer import Layer
 
 
 class LReLU(Layer):
@@ -9,7 +9,7 @@ class LReLU(Layer):
         self.slope = theano.shared(numpy.asarray(slope, theano.config.floatX))
 
     def forward(self, x):
-        print "Layer/LeakyReLU"
+        # print("Layer/LeakyReLU")
         return T.maximum(self.slope * x, x)
 
 
