@@ -70,6 +70,11 @@ import load_data
 
 from tensorboardX import SummaryWriter
 
+run_time = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+dir_path = os.path.join(os.environ['HOME'], 'project/runs', 'VAT-theano-semi/mnist/%s_xi=1e-6_top_bn=%s_%s' % (arg['--cost_type'],
+                                                                                                               str(arg['--top_bn']), run_time))
+# writer = SummaryWriter(log_dir=dir_path)
+
 
 def train(args):
     print(args)
@@ -88,46 +93,18 @@ def train(args):
     ul_x = t_func.matrix()
     t = t_func.ivector()
 
-    if (args['--cost_type'] == 'MLE'):
-        cost = costs.cross_entropy_loss(x=x, t=t, forward_func=model.forward_train)
-    elif (args['--cost_type'] == 'L2'):
-        cost = costs.cross_entropy_loss(x=x, t=t, forward_func=model.forward_train) \
-               + costs.weight_decay(params=model.params, coeff=float(args['--lamb']))
-    elif (args['--cost_type'] == 'AT'):
-        cost = costs.adversarial_training(x, t, model.forward_train,
-                                          'CE',
-                                          epsilon=float(args['--epsilon']),
-                                          lamb=float(args['--lamb']),
-                                          norm_constraint=args['--norm_constraint'],
-                                          forward_func_for_generating_adversarial_examples=model.forward_no_update_batch_stat)
-    elif (args['--cost_type'] == 'VAT'):
-        cost = costs.virtual_adversarial_training(x, t, model.forward_train,
-                                                  'CE',
-                                                  epsilon=float(args['--epsilon']),
-                                                  norm_constraint=args['--norm_constraint'],
-                                                  num_power_iter=int(args['--num_power_iter']),
-                                                  x_for_generating_adversarial_examples=ul_x,
-                                                  forward_func_for_generating_adversarial_examples=model.forward_no_update_batch_stat)
-    elif (args['--cost_type'] == 'VAT_f'):
-        cost = costs.virtual_adversarial_training_finite_diff(x, t, model.forward_train,
-                                                              'CE',
-                                                              xi=1e-6,
-                                                              epsilon=float(args['--epsilon']),
-                                                              norm_constraint=args['--norm_constraint'],
-                                                              num_power_iter=int(args['--num_power_iter']),
-                                                              x_for_generating_adversarial_examples=ul_x,
-                                                              forward_func_for_generating_adversarial_examples=model.forward_no_update_batch_stat)
+    cost_semi = get_cost_type_semi(model, x, t, ul_x, args)
     nll = costs.cross_entropy_loss(x=x, t=t, forward_func=model.forward_test)
     error = costs.error(x=x, t=t, forward_func=model.forward_test)
 
-    optimizer = optimizers.ADAM(cost=cost, params=model.params, alpha=float(args['--initial_learning_rate']))
+    optimizer = optimizers.ADAM(cost=cost_semi, params=model.params, alpha=float(args['--initial_learning_rate']))
 
     index = t_func.iscalar()
     ul_index = t_func.iscalar()
     batch_size = int(args['--batch_size'])
     ul_batch_size = int(args['--ul_batch_size'])
 
-    f_train = theano.function(inputs=[index, ul_index], outputs=cost, updates=optimizer.updates,
+    f_train = theano.function(inputs=[index, ul_index], outputs=cost_semi, updates=optimizer.updates,
                               givens={
                                   x: x_train[batch_size * index:batch_size * (index + 1)],
                                   t: t_train[batch_size * index:batch_size * (index + 1)],
@@ -187,10 +164,10 @@ def train(args):
             l_i = 0 if l_i >= n_train / batch_size - 1 else l_i + 1
             ul_i = 0 if ul_i >= n_ul_train / ul_batch_size - 1 else ul_i + 1
 
-        sum_nll_train = numpy.sum(numpy.array([f_nll_train(i) for i in range(n_train / batch_size)])) * batch_size
-        sum_error_train = numpy.sum(numpy.array([f_error_train(i) for i in range(n_train / batch_size)]))
-        sum_nll_test = numpy.sum(numpy.array([f_nll_test(i) for i in range(n_test / batch_size)])) * batch_size
-        sum_error_test = numpy.sum(numpy.array([f_error_test(i) for i in range(n_test / batch_size)]))
+        sum_nll_train = numpy.sum(numpy.array([f_nll_train(i) for i in range(int(n_train / batch_size))])) * batch_size
+        sum_error_train = numpy.sum(numpy.array([f_error_train(i) for i in range(int(n_train / batch_size))]))
+        sum_nll_test = numpy.sum(numpy.array([f_nll_test(i) for i in range(int(n_test / batch_size))])) * batch_size
+        sum_error_test = numpy.sum(numpy.array([f_error_test(i) for i in range(int(n_test / batch_size))]))
         statuses['nll_train'].append(sum_nll_train / n_train)
         statuses['error_train'].append(sum_error_train)
         statuses['nll_test'].append(sum_nll_test / n_test)
